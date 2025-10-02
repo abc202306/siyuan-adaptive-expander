@@ -206,8 +206,6 @@ export default class PluginSample extends Plugin {
         const frontEnd = getFrontend();
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
 
-        console.log(this.i18n.helloPlugin);
-
         this.registerEventListeners();
     }
 
@@ -217,8 +215,6 @@ export default class PluginSample extends Plugin {
     // including unregistering event listeners
     // and stopping any background tasks
     onunload() {
-        console.log(this.i18n.byePlugin);
-
         this.unregisterEventListeners();
     }
 

@@ -13,3 +13,9 @@
 - Update LICENSE - Corrected the Year and the Copyright Holder
 - Update 3 Files - Cleared the Unused Content
 - Update plugin.json - Corrected the 9 Parts in the plugin.json
+
+## v1.0.2 2025-10-02
+
+### Bug Fixes
+
+- Update src/index.ts - Removed 2 Unused Code Lines (log hello message or bye message after plugin loaded or unloaded)
