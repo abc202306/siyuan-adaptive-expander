@@ -2,39 +2,22 @@
   "name": "siyuan-adaptive-expander",
   "author": "abc202306",
   "url": "https://github.com/abc202306/siyuan-adaptive-expander",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "3.3.0",
-  "backends": [
-    "windows",
-    "linux",
-    "darwin",
-    "ios",
-    "android",
-    "harmony",
-    "docker"
-  ],
-  "frontends": [
-    "desktop",
-    "mobile",
-    "browser-desktop",
-    "browser-mobile",
-    "desktop-window"
-  ],
-  "disabledInPublish": false,
+  "backends": ["all"],
+  "frontends": ["all"],
+  "disabledInPublish": true,
   "displayName": {
     "default": "Adaptive Expander",
     "zh_CN": "自适应展开器"
   },
   "description": {
-    "default": "Automatically expands collapsible blocks such as list blocks or section blocks when those blocks are focused on or previewed via links.;\n\nThe adaptive expansion behavior of this plugin is similar to that found in note-taking software like Logseq and Workflowy. However, its functionality is not limited to list blocks—it also applies to section blocks, table blocks, code blocks, and other types of collapsible blocks.",
-    "zh_CN": "思源插件：自适应展开列表块或章节块等可折叠块，当对可折叠块进行聚焦和链接预览时;\n\n该插件的自适应展开的效果与笔记软件 Logseq 和 Workflowy 类似，但其作用的效果不仅适用于列表块，而且也适用于章节块、表格块和代码块等类型的块"
+    "default": "Automatically expands collapsible blocks like list blocks or section blocks when those blocks are focused on or previewed via links",
+    "zh_CN": "自适应展开列表块或章节块等可折叠块，当聚焦或链接预览时"
   },
   "readme": {
     "default": "README.md",
     "zh_CN": "README_zh_CN.md"
   },
-  "keywords": [
-    "adaptive",
-    "expander"
-  ]
+  "keywords": []
 }
