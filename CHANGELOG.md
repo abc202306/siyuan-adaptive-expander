@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.5 2025-10-04
+
+### Bug Fixes
+
+- Update src/index.ts - Refactored the code.
+- Update tsconfig.json - Refactored the code.
+
 ## v1.0.4 2025-10-03
 
 ### Bug Fixes
