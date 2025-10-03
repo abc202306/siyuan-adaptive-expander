@@ -28,7 +28,7 @@ declare global {
 // It listens to the 'loaded-protyle-static' event to check each block's attributes and decides whether to expand or fold it.
 // If a block is marked as folded (fold attribute set to '1'), it will be expanded.
 // The plugin keeps track of the blocks that were expanded and folds them back when the protyle instance is destroyed, using the 'destroy-protyle' event.
-export default class PluginSample extends Plugin {
+export default class AdaptiveExpanderPlugin extends Plugin {
     // bounded instant methods for event listeners callbacks
     // these are needed to properly register and unregister as event listeners handlers
 

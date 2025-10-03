@@ -2,7 +2,7 @@
   "name": "siyuan-adaptive-expander",
   "author": "abc202306",
   "url": "https://github.com/abc202306/siyuan-adaptive-expander",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minAppVersion": "3.3.0",
   "backends": ["all"],
   "frontends": ["all"],
