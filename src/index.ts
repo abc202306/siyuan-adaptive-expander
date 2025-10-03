@@ -2,6 +2,7 @@ import {
     Plugin,
     getFrontend,
     fetchPost,
+    IEventBusMap,
 } from "siyuan";
 import "./index.scss";
 
@@ -38,6 +39,9 @@ export default class AdaptiveExpanderPlugin extends Plugin {
     private tryExpandBlockBoundThis = this.tryExpandBlock.bind(this)
     private tryFoldBlockBoundThis = this.tryFoldBlock.bind(this)
     private tryFoldBlockWhenDestoryProtypeBoundThis = this.tryFoldBlockWhenDestroyProtype.bind(this)
+
+    // a list of the type-listener pairs for easy registering and unregistering
+    private typeListenerPairArray: [keyof IEventBusMap,(...args:any)=>any][] = [];
     
     // status variables for log or which blocks to toggle fold/expand
 
@@ -51,36 +55,40 @@ export default class AdaptiveExpanderPlugin extends Plugin {
 
     // the log event listener handler func for all monitored events
     logArgsCallback(...args: any) {
-        // increment the call count (call order number)
-        this.fnLogArgsExecCount += 1;
-        // log the call count (call order number)
-        if(myDebug){console.log(`logArgsCallback called ${this.fnLogArgsExecCount} times`)}
-        
-        // log the specified part of the event object or the whole event object
+        if(myDebug){
+            // increment the call count (call order number)
+            this.fnLogArgsExecCount += 1;
+            // log the call count (call order number)
+            console.log(`logArgsCallback called ${this.fnLogArgsExecCount} times`)
+            
+            // log the specified part of the event object or the whole event object
 
-        // resolve the dot-separated path string to get the specified part of the event object
-        // if the path is invalid or empty, log the whole event object
-        // e.g., window.myPathVar = 'detail.protyle.block.id' to log the block id
-        // e.g., window.myPathVar = '' to log the whole event object
-        const pathParts = window.myPathVar?.split('.') || []
+            // resolve the dot-separated path string to get the specified part of the event object
+            // if the path is invalid or empty, log the whole event object
+            // e.g., window.myPathVar = 'detail.protyle.block.id' to log the block id
+            // e.g., window.myPathVar = '' to log the whole event object
+            const pathParts = window.myPathVar?.split('.') || []
 
-        // calculate the specified part of the event object and the hint string
-        const arg0 = args[0]
-        let value = arg0
-        let validDotSepPath = ''
-        for (let pathPart of pathParts) {
-            if (value && pathPart in value) {
-                validDotSepPath += (validDotSepPath ? '.' : '') + pathPart
-                value = value[pathPart]
+            // calculate the specified part of the event object and the hint string
+            const arg0 = args[0]
+            let value = arg0
+            let validDotSepPath = ''
+            for (let pathPart of pathParts) {
+                if (value && pathPart in value) {
+                    validDotSepPath += (validDotSepPath ? '.' : '') + pathPart
+                    value = value[pathPart]
+                }
             }
+
+            // log the specified part of the event object or the whole event object
+            console.log(`${this.fnLogArgsExecCount} logArgsCallback args[0].` + validDotSepPath + '=', value)
+
+            // extra log: log the block id if exists
+            const id = args[0].detail?.protyle?.block?.id
+            console.log(`${this.fnLogArgsExecCount} logArgsCallback the block id of args[0]:`, id)
+        } else {
+            throw new Error("Debug log is disabled. Set myDebug to true to enable it.");
         }
-
-        // log the specified part of the event object or the whole event object
-        if(myDebug){console.log(`${this.fnLogArgsExecCount} logArgsCallback args[0].` + validDotSepPath + '=', value)}
-
-        // extra log: log the block id if exists
-        const id = args[0].detail?.protyle?.block?.id
-        if(myDebug){console.log(`${this.fnLogArgsExecCount} logArgsCallback the block id of args[0]:`, id)}
     }
 
     // adaptively expand the block and register into the blocks to be recovered as folded if it is marked as folded
@@ -88,11 +96,15 @@ export default class AdaptiveExpanderPlugin extends Plugin {
         // get the current block id from the event object
         const id = args[0].detail?.protyle?.block?.id
         // the function call debug log
-        if(myDebug){console.log('Call tryExpandListItem ', id)}
+        if(myDebug){
+            console.log('Call tryExpandListItem ', id)
+        }
         // fetch the current block attributes to check if it is marked as folded, and expand it and register it if so
         fetchPost('/api/attr/getBlockAttrs', { id: id }, response => {
             // the fetch response debug log
-            if(myDebug){console.log('Call tryExpandListItem response:', response)}
+            if(myDebug){
+                console.log('Call tryExpandListItem response:', response)
+            }
             // check if the current block is marked as folded
             const data = response.data || {}
             // if so, expand it and register it into the blocks to be recovered as folded
@@ -100,7 +112,9 @@ export default class AdaptiveExpanderPlugin extends Plugin {
                 // expand the current block, and register it into the blocks to be recovered as folded
                 fetchPost('/api/block/unfoldBlock', { id: id }, response => {
                     // the fetch response debug log
-                    if(myDebug){console.log('Call tryExpandListItem unfoldBlock response:', response)}    
+                    if(myDebug){
+                        console.log('Call tryExpandListItem unfoldBlock response:', response)
+                    }    
                     // register the current block into the blocks to be recovered as folded with a slight delay to avoid abnormal UI behavior like flashing
                     setTimeout(() => {
                         // register the current block into the blocks to be recovered as folded
@@ -116,13 +130,17 @@ export default class AdaptiveExpanderPlugin extends Plugin {
         // get the current block id from the event object
         const id = args[0].detail?.protyle?.block.id
         // the function call debug log
-        if(myDebug){console.log('Call tryFoldBlock ', id)}
+        if(myDebug){
+            console.log('Call tryFoldBlock ', id)
+        }
         // fold back the blocks that were expanded by tryExpandBlock if they are not the current block
         // use a new array to store the blocks that are not folded back
         // this is to avoid modifying the array while iterating over it
         const newLatestFoldedBlockIdArray = [];
         // the debug log of the blocks to be folded back
-        if(myDebug){console.log('this.latestFoldedBlockIdArray:', this.latestFoldedBlockIdArray)}
+        if(myDebug){
+            console.log('this.latestFoldedBlockIdArray:', this.latestFoldedBlockIdArray)
+        }
         // iterate over the blocks to be folded back
         for (let latestFoldedBlockId of this.latestFoldedBlockIdArray) {
             // fold back the block if it is not the current block
@@ -130,7 +148,9 @@ export default class AdaptiveExpanderPlugin extends Plugin {
                 // fold back the block
                 fetchPost('/api/block/foldBlock', { id: latestFoldedBlockId }, response => {
                     // the fetch response debug log
-                    if(myDebug){console.log('Call tryFoldBlock response:', response)}
+                    if(myDebug){
+                        console.log('Call tryFoldBlock response:', response)
+                    }
                 })
             }else{
                 // keep the block in the new array if it is the current block
@@ -144,13 +164,17 @@ export default class AdaptiveExpanderPlugin extends Plugin {
     // fold back all the blocks that were expanded by tryExpandBlock when the protyle instance is destroyed
     tryFoldBlockWhenDestroyProtype(...args: any) {
         // the function call debug log
-        if(myDebug){console.log('this.latestFoldedBlockIdArray:', this.latestFoldedBlockIdArray)}
+        if(myDebug){
+            console.log('this.latestFoldedBlockIdArray:', this.latestFoldedBlockIdArray)
+        }
         // fold back all the blocks that were expanded by tryExpandBlock
         for (let latestFoldedBlockId of this.latestFoldedBlockIdArray) {
             // fold back the block
             fetchPost('/api/block/foldBlock', { id: latestFoldedBlockId }, response => {
                 // the fetch response debug log
-                if(myDebug){console.log('Call tryFoldBlockWhenDestroyProtype response:', response)}
+                if(myDebug){
+                    console.log('Call tryFoldBlockWhenDestroyProtype response:', response)
+                }
             })
         }
         // clear the blocks to be folded back
@@ -166,35 +190,45 @@ export default class AdaptiveExpanderPlugin extends Plugin {
         // so that they can access the instance variables and methods
         // and can be properly unregistered later
 
-        // for debug log
-        if(myDebug){window.myPathVar = ''}
-
         // using the bounded funcs defined in the instance variables
         
-        // register the logger for debug log
-        if(myDebug){this.eventBus.on('loaded-protyle-static', this.logArgsCallbackBoundThis)}
-        if(myDebug){this.eventBus.on('destroy-protyle', this.logArgsCallbackBoundThis)}
+        if(myDebug){
+            // for debug log
+            window.myPathVar = ''
+
+            // repare to register the logger for debug log
+            const typeListenerPairArray01: [keyof IEventBusMap,(...args:any)=>any][] = [
+                'loaded-protyle-static',
+                'loaded-protyle-dynamic',
+                'switch-protyle',
+                'destroy-protyle',
+            ].map(type=>[type, this.logArgsCallbackBoundThis] as [keyof IEventBusMap,(...args:any)=>any]);
+            this.typeListenerPairArray = this.typeListenerPairArray.concat(typeListenerPairArray01);
+        }
         
-        // register the main functional methods
-        this.eventBus.on('loaded-protyle-static', this.tryExpandBlockBoundThis)
-        this.eventBus.on('loaded-protyle-static', this.tryFoldBlockBoundThis)
-        this.eventBus.on('destroy-protyle', this.tryFoldBlockWhenDestoryProtypeBoundThis)       
+        // repare to register the main functional methods
+        const typeListenerPairArray02: [keyof IEventBusMap,(...args:any)=>any][] = [
+            ['loaded-protyle-static', this.tryExpandBlockBoundThis],
+            ['loaded-protyle-static', this.tryFoldBlockBoundThis],
+            ['loaded-protyle-dynamic', this.tryExpandBlockBoundThis],
+            ['loaded-protyle-dynamic', this.tryFoldBlockBoundThis],
+            ['switch-protyle', this.tryFoldBlockBoundThis],
+            ['destroy-protyle', this.tryFoldBlockWhenDestoryProtypeBoundThis],
+        ];
+        this.typeListenerPairArray = this.typeListenerPairArray.concat(typeListenerPairArray02);
+        
+        // register the event listeners using the type-listener pairs
+        this.typeListenerPairArray.forEach(([type,listener])=>{
+            this.eventBus.on(type, listener)
+        });
     }
 
     // unregister the event listeners
     unregisterEventListeners() {
-        // unregister the event listeners for the events to be monitored
-        // using the same bounded funcs as when registering
-        // so that they can be properly unregistered
-
-        // for debug log
-        if(myDebug){this.eventBus.off('loaded-protyle-static', this.logArgsCallbackBoundThis)}
-        if(myDebug){this.eventBus.off('destroy-protyle', this.logArgsCallbackBoundThis)}
-
-        // unregister the main functional methods
-        this.eventBus.off('loaded-protyle-static', this.tryExpandBlockBoundThis)
-        this.eventBus.off('loaded-protyle-static', this.tryFoldBlockBoundThis)
-        this.eventBus.off('destroy-protyle', this.tryFoldBlockWhenDestoryProtypeBoundThis)
+        // unregister the event listeners using the type-listener pairs
+        this.typeListenerPairArray.forEach(([type,listener])=>{
+            this.eventBus.off(type, listener)
+        });
     }
     
     // plugin lifecycle methods

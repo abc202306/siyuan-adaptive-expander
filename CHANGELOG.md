@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.4 2025-10-02
+
+### Bug Fixes
+
+- Update src/index.ts - Added monitoring for more types of event buses and refactored the code.
+
 ## v1.0.3 2025-10-02
 
 ### Bug Fixes
