@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.6 2025-10-04
+
+### Bug Fixes
+
+- Update src/index.ts - Refactored the code.
+
 ## v1.0.5 2025-10-04
 
 ### Bug Fixes

@@ -4,8 +4,15 @@ import {
     fetchPost,
     IEventBusMap,
     IWebSocketData,
+    IProtyle,
+    EventBus,
 } from "siyuan";
 import "./index.scss";
+
+
+type CustomEventOfEventBus = CustomEvent<IEventBusMap[keyof IEventBusMap]>;
+type CallbackFn = (customEvent: CustomEventOfEventBus)=>void;
+interface IClosable { close(): void; }
 
 // config variables
 
@@ -19,7 +26,7 @@ const myDebug = false;
 // if empty, log the whole event object
 declare global {
     interface Window {
-        myPathVar?: any
+        myPathVar?: string;
     }
 }
 window.myPathVar = ''
@@ -31,19 +38,18 @@ function logWhenDebug(...args: any) {
     }
 }
 
-// the adaptive-expander plugin class
-// 
-// This plugin automatically expands or folds blocks based on their content when the page is loaded.
-// 
-// It listens to the 'loaded-protyle-static' event to check each block's attributes and decides whether to expand or fold it.
-// If a block is marked as folded (fold attribute set to '1'), it will be expanded.
-// The plugin keeps track of the blocks that were expanded and folds them back when the protyle instance is destroyed, using the 'destroy-protyle' event.
-export default class AdaptiveExpanderPlugin extends Plugin {
+class AdaptiveExpander implements IClosable {
+    private eventBus: EventBus;
     // bounded instant methods for event listeners callbacks
     // these are needed to properly register and unregister as event listeners handlers
 
     // the bounded instant methods for event listeners callbacks
-    private cbb = {
+    private cbb: {
+        logArgsForDebug: CallbackFn,
+        tryExpandBlock: CallbackFn,
+        tryFoldBlock: CallbackFn,
+        tryFoldBlockWhenDestroyProtype: CallbackFn,
+    } = {
          // debug log event listener handler func
         logArgsForDebug: this.logArgsForDebugCallback.bind(this),
         // the following three are the main functional methods
@@ -53,7 +59,7 @@ export default class AdaptiveExpanderPlugin extends Plugin {
     }
 
     // a list of the type-listener pairs for easy registering and unregistering
-    private typeListenerPairArray: [keyof IEventBusMap,(...args:any)=>any][] = [
+    private typeListenerPairArray: [keyof IEventBusMap,CallbackFn][] = [
         // keep if myDebug is true, otherwise only keep the functional listeners
         ['loaded-protyle-static', this.cbb.logArgsForDebug],
         ['loaded-protyle-dynamic', this.cbb.logArgsForDebug],
@@ -71,7 +77,7 @@ export default class AdaptiveExpanderPlugin extends Plugin {
         ['loaded-protyle-dynamic', this.cbb.tryFoldBlock],
         ['switch-protyle', this.cbb.tryFoldBlock],
         ['destroy-protyle', this.cbb.tryFoldBlockWhenDestroyProtype]
-    ].filter(([_,listener])=> myDebug || listener!==this.cbb.logArgsForDebug) as [keyof IEventBusMap,(...args:any)=>any][];
+    ].filter(([_,listener])=> myDebug || listener!==this.cbb.logArgsForDebug) as [keyof IEventBusMap,CallbackFn][];
     
     // status variables for log or which blocks to toggle fold/expand
 
@@ -80,11 +86,43 @@ export default class AdaptiveExpanderPlugin extends Plugin {
     // a list of blocks to be recovered as folded
     private latestFoldedBlockIdArray: string[] = [];
 
-    // the info variables
-    private isMobile: boolean = false;
+    constructor(eventBus: EventBus) {
+        this.eventBus = eventBus;
+        this.registerEventListeners();
+    }
+
+    // close the instance and unregister event listeners
+    public close() {
+        this.unregisterEventListeners();
+    }
+
+    // register and unregister event listeners
+
+    // register the event listeners
+    private registerEventListeners() {
+        // register the event listeners for the events to be monitored
+        // bind the event listener handler funcs to this instance
+        // so that they can access the instance variables and methods
+        // and can be properly unregistered later
+
+        // using the bounded funcs defined in the instance variables
+
+        // register the event listeners using the type-listener pairs
+        this.typeListenerPairArray.forEach(([type,listener])=>{
+            this.eventBus.on(type, listener)
+        });
+    }
+
+    // unregister the event listeners
+    private unregisterEventListeners() {
+        // unregister the event listeners using the type-listener pairs
+        this.typeListenerPairArray.forEach(([type,listener])=>{
+            this.eventBus.off(type, listener)
+        });
+    }
 
     // the log event listener handler func for all monitored events
-    public logArgsForDebugCallback(...args: any) {
+    public logArgsForDebugCallback(customEvent: CustomEventOfEventBus) {
         if (!myDebug){
             throw new Error("Debug log is disabled. Set myDebug to true to enable it.");
         }
@@ -103,8 +141,7 @@ export default class AdaptiveExpanderPlugin extends Plugin {
         const pathParts = window.myPathVar?.split('.') || []
 
         // calculate the specified part of the event object and the hint string
-        const arg0 = args[0];
-        let value = arg0;
+        let value: any = customEvent;
         let validDotSepPath = '';
         for (let pathPart of pathParts) {
             if (value && pathPart in value) {
@@ -119,14 +156,14 @@ export default class AdaptiveExpanderPlugin extends Plugin {
         console.log(`${this.fnLogArgsExecCount} logArgsCallback args[0]` + validDotSepPath + '=', value)
 
         // extra log: log the block id if exists
-        const id = args[0].detail?.protyle?.block?.id
+        const id = (customEvent.detail as {protyle: IProtyle | undefined})?.protyle.block.id;
         console.log(`${this.fnLogArgsExecCount} logArgsCallback the block id of args[0]:`, id)
     }
 
     // adaptively expand the block and register into the blocks to be recovered as folded if it is marked as folded
-    public async tryExpandBlockCallback(...args: any) {
+    public async tryExpandBlockCallback(customEvent: CustomEventOfEventBus) {
         // get the current block id from the event object
-        const id = args[0].detail?.protyle?.block?.id
+        const id = (customEvent.detail as {protyle: IProtyle | undefined})?.protyle.block.id;
 
         // the function call debug log
         logWhenDebug('Call tryExpandListItem ', id)
@@ -160,9 +197,9 @@ export default class AdaptiveExpanderPlugin extends Plugin {
     }
 
     // adaptively fold back the blocks that were expanded by tryExpandBlock if they are not the current block
-    public async tryFoldBlockCallback(...args: any) {
+    public async tryFoldBlockCallback(customEvent: CustomEventOfEventBus) {
         // get the current block id from the event object
-        const id = args[0].detail?.protyle?.block.id + "";
+        const id = (customEvent.detail as {protyle: IProtyle | undefined})?.protyle.block.id;
 
         // the function call debug log
         logWhenDebug('Call tryFoldBlock ', id)
@@ -191,7 +228,7 @@ export default class AdaptiveExpanderPlugin extends Plugin {
     }
 
     // fold back all the blocks that were expanded by tryExpandBlock when the protyle instance is destroyed
-    public async tryFoldBlockWhenDestroyProtypeCallback(...args: any) {
+    public async tryFoldBlockWhenDestroyProtypeCallback(customEvent: CustomEventOfEventBus) {
         // the function call debug log
         logWhenDebug('this.latestFoldedBlockIdArray:', this.latestFoldedBlockIdArray)
 
@@ -208,31 +245,20 @@ export default class AdaptiveExpanderPlugin extends Plugin {
         // clear the blocks to be folded back
         this.latestFoldedBlockIdArray = [];
     }
+}
 
-    // register and unregister event listeners
 
-    // register the event listeners
-    private registerEventListeners() {
-        // register the event listeners for the events to be monitored
-        // bind the event listener handler funcs to this instance
-        // so that they can access the instance variables and methods
-        // and can be properly unregistered later
+// the adaptive-expander plugin class
+// 
+// This plugin automatically expands or folds blocks based on their content when the page is loaded.
+// 
+// It listens to the 'loaded-protyle-static' event to check each block's attributes and decides whether to expand or fold it.
+// If a block is marked as folded (fold attribute set to '1'), it will be expanded.
+// The plugin keeps track of the blocks that were expanded and folds them back when the protyle instance is destroyed, using the 'destroy-protyle' event.
+export default class AdaptiveExpanderPlugin extends Plugin {
+    private isMobile: boolean = false;
 
-        // using the bounded funcs defined in the instance variables
-
-        // register the event listeners using the type-listener pairs
-        this.typeListenerPairArray.forEach(([type,listener])=>{
-            this.eventBus.on(type, listener)
-        });
-    }
-
-    // unregister the event listeners
-    private unregisterEventListeners() {
-        // unregister the event listeners using the type-listener pairs
-        this.typeListenerPairArray.forEach(([type,listener])=>{
-            this.eventBus.off(type, listener)
-        });
-    }
+    private adaptiveExpander: IClosable | null;
     
     // plugin lifecycle methods
 
@@ -240,12 +266,10 @@ export default class AdaptiveExpanderPlugin extends Plugin {
     // should initialize anything needed
     // including registering event listeners 
     onload() {
-        logWhenDebug("typeListenerPairArray", this.typeListenerPairArray);
-
         const frontEnd = getFrontend();
         this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
 
-        this.registerEventListeners();
+        this.adaptiveExpander = new AdaptiveExpander(this.eventBus);
     }
 
     // called when the plugin is disabled
@@ -254,7 +278,7 @@ export default class AdaptiveExpanderPlugin extends Plugin {
     // including unregistering event listeners
     // and stopping any background tasks
     onunload() {
-        this.unregisterEventListeners();
+        this.adaptiveExpander?.close();
     }
 
     // called when the plugin is uninstalled
